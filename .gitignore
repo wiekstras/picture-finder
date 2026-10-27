@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+*.user
+*.json.key
+service-account*.json
