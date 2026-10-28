@@ -4,159 +4,99 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Picture Finder</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-    h1 { margin-bottom: .25rem; }
-    .muted { color: #666; }
-    form { display: flex; gap: .5rem; align-items: center; margin: 1.5rem 0; flex-wrap: wrap; }
-    button { padding: .5rem 1.25rem; cursor: pointer; }
-    #preview { max-height: 160px; display: none; margin-bottom: 1rem; border: 1px solid #ddd; }
-    .error { background: #fde8e8; color: #9b1c1c; padding: .75rem 1rem; border-radius: 4px; }
-    ul.results { list-style: none; padding: 0; }
-    ul.results li { display: flex; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid #eee; align-items: flex-start; }
-    ul.results img { width: 96px; height: 72px; object-fit: cover; background: #f2f2f2; flex-shrink: 0; }
-    .info { min-width: 0; }
-    .info a { font-weight: 600; word-break: break-word; }
-    .url { font-size: .85rem; color: #666; word-break: break-all; }
-    .badge { display: inline-block; font-size: .75rem; padding: .1rem .45rem; border-radius: 3px; margin-right: .35rem; font-weight: 600; }
-    .badge.nl { background: #ff7f00; color: #fff; }
-    .badge.full { background: #c81e1e; color: #fff; }
-    .badge.partial { background: #e3a008; color: #fff; }
-    .thumbs { display: flex; flex-wrap: wrap; gap: .5rem; }
-    .thumbs img { width: 96px; height: 72px; object-fit: cover; background: #f2f2f2; }
-  </style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff6a00' stroke-width='2'><circle cx='11' cy='11' r='7'/><path d='m20 20-4-4'/></svg>">
+  <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <h1>Picture Finder</h1>
-  <p class="muted">Upload one of your photos to see where it is used on the internet. Dutch (.nl) sites are listed first.</p>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="14" height="12" rx="2"/><circle cx="17" cy="16" r="4"/><path d="m20 19 2 2"/></svg>
+      <div>
+        <h1>Picture Finder</h1>
+        <p>Find where your photos are used online. Dutch sites first.</p>
+      </div>
+    </div>
+  </header>
 
-  <form id="form">
-    <input type="file" id="file" accept="image/jpeg,image/png" required>
-    <button type="submit" id="check">Check</button>
-    <span id="status" class="muted"></span>
-  </form>
-  <img id="preview" alt="Selected photo">
+  <main class="layout">
+    <aside class="panel">
+      <form id="form" novalidate>
+        <section class="card">
+          <h2><span class="step">1</span> Photo</h2>
+          <label id="dropzone" class="dropzone" tabindex="0">
+            <input type="file" id="file" accept="image/jpeg,image/png" hidden>
+            <div class="dz-empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+              <strong>Drop a photo here</strong>
+              <span>or click to choose, or paste. JPG or PNG, max 10 MB.</span>
+            </div>
+            <img id="preview" alt="Selected photo" hidden>
+          </label>
+          <div id="fileMeta" class="file-meta" hidden>
+            <span id="fileName"></span>
+            <button type="button" id="clearFile" class="link-btn">Remove</button>
+          </div>
 
-  <div id="results"></div>
+          <label class="field">
+            <span>Public image URL <em>(optional)</em></span>
+            <input type="url" id="imageUrl" placeholder="https://your-site.nl/photos/photo.jpg" autocomplete="off">
+            <small>Needed for Google Lens. Tip: use the photo on your own website.</small>
+          </label>
+          <div id="manualLinks" class="manual-links" hidden>
+            <span>Check by hand:</span>
+          </div>
+        </section>
 
-  <script>
-    const MAX_BYTES = 10 * 1024 * 1024;
-    const form = document.getElementById('form');
-    const fileInput = document.getElementById('file');
-    const button = document.getElementById('check');
-    const statusEl = document.getElementById('status');
-    const preview = document.getElementById('preview');
-    const results = document.getElementById('results');
+        <section class="card">
+          <div class="card-head">
+            <h2><span class="step">2</span> Search providers</h2>
+          </div>
+          <div id="providers" class="providers">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="rememberKeys">
+            <span>Remember keys in this browser</span>
+          </label>
+          <small class="hint">Keys are only sent to this app with each check and are never stored on the server. Unticked, they are forgotten when you close the tab.</small>
+        </section>
 
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (preview.src) URL.revokeObjectURL(preview.src);
-      preview.style.display = file ? 'block' : 'none';
-      if (file) preview.src = URL.createObjectURL(file);
-    });
+        <button type="submit" id="check" class="primary">
+          <span class="btn-label">Check</span>
+          <span class="spinner" hidden></span>
+        </button>
+        <p id="formError" class="form-error" role="alert" hidden></p>
+      </form>
+    </aside>
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      results.replaceChildren();
+    <section class="results" id="results" aria-live="polite">
+      <div class="empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <h2>No results yet</h2>
+        <p>Choose a photo, pick one or more providers and click <strong>Check</strong>.</p>
+      </div>
+    </section>
+  </main>
 
-      const file = fileInput.files[0];
-      if (!file) return showError('Choose an image first.');
-      if (!['image/jpeg', 'image/png'].includes(file.type)) return showError('Only JPG and PNG images are supported.');
-      if (file.size > MAX_BYTES) return showError('Image is larger than 10 MB.');
+  <template id="resultTemplate">
+    <li class="result">
+      <a class="thumb" target="_blank" rel="noopener noreferrer"><img alt="" loading="lazy" referrerpolicy="no-referrer"></a>
+      <div class="result-body">
+        <div class="badges"></div>
+        <a class="title" target="_blank" rel="noopener noreferrer"></a>
+        <div class="url"></div>
+        <details class="images" hidden>
+          <summary></summary>
+          <ul></ul>
+        </details>
+      </div>
+      <button type="button" class="copy" title="Copy link">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>
+      </button>
+    </li>
+  </template>
 
-      const body = new FormData();
-      body.append('image', file);
-
-      button.disabled = true;
-      statusEl.textContent = 'Searching...';
-      try {
-        const res = await fetch('/api/check', { method: 'POST', body });
-        const data = await res.json().catch(() => ({ error: `Server returned ${res.status}.` }));
-        if (!res.ok) return showError(data.error || `Server returned ${res.status}.`);
-        render(data);
-      } catch (err) {
-        showError('Could not reach the server: ' + err.message);
-      } finally {
-        button.disabled = false;
-        statusEl.textContent = '';
-      }
-    });
-
-    function showError(message) {
-      results.replaceChildren(el('div', { className: 'error', textContent: message }));
-    }
-
-    function hostOf(url) {
-      try { return new URL(url).hostname.toLowerCase(); } catch { return ''; }
-    }
-
-    function isNl(url) {
-      const host = hostOf(url);
-      return host === 'nl' || host.endsWith('.nl');
-    }
-
-    function render(data) {
-      if (data.bestGuessLabels.length) {
-        results.append(el('p', { className: 'muted', textContent: 'Best guess: ' + data.bestGuessLabels.join(', ') }));
-      }
-
-      // NL first, then full matches before partial matches; otherwise keep Google's order.
-      const pages = data.pagesWithMatchingImages
-        .map((p, i) => ({ ...p, i, nl: isNl(p.url), full: p.fullMatchingImageUrls.length > 0 }))
-        .sort((a, b) => (b.nl - a.nl) || (b.full - a.full) || (a.i - b.i));
-
-      results.append(el('h2', { textContent: `Pages using this photo (${pages.length})` }));
-      if (!pages.length) {
-        results.append(el('p', { className: 'muted', textContent: 'No pages found.' }));
-      } else {
-        const list = el('ul', { className: 'results' });
-        for (const p of pages) {
-          const thumbUrl = p.fullMatchingImageUrls[0] || p.partialMatchingImageUrls[0];
-          const li = el('li');
-          li.append(thumbUrl ? thumb(thumbUrl) : el('img', { alt: '' }));
-
-          const info = el('div', { className: 'info' });
-          const badges = el('div');
-          if (p.nl) badges.append(el('span', { className: 'badge nl', textContent: 'NL' }));
-          badges.append(p.full
-            ? el('span', { className: 'badge full', textContent: 'full match' })
-            : el('span', { className: 'badge partial', textContent: 'partial match' }));
-          info.append(
-            badges,
-            el('a', { href: p.url, target: '_blank', rel: 'noopener noreferrer', textContent: p.pageTitle || p.url }),
-            el('div', { className: 'url', textContent: p.url }));
-          li.append(info);
-          list.append(li);
-        }
-        results.append(list);
-      }
-
-      imageSection('Full matching images', data.fullMatchingImages);
-      imageSection('Partial matching images (likely crops or edits)', data.partialMatchingImages);
-    }
-
-    function imageSection(title, urls) {
-      if (!urls.length) return;
-      results.append(el('h2', { textContent: `${title} (${urls.length})` }));
-      const wrap = el('div', { className: 'thumbs' });
-      for (const url of urls) {
-        const a = el('a', { href: url, target: '_blank', rel: 'noopener noreferrer', title: url });
-        a.append(thumb(url));
-        wrap.append(a);
-      }
-      results.append(wrap);
-    }
-
-    function thumb(url) {
-      // Many sites block hotlinking; fall back to an empty grey box.
-      const img = el('img', { src: url, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer' });
-      img.addEventListener('error', () => img.removeAttribute('src'), { once: true });
-      return img;
-    }
-
-    function el(tag, props = {}) {
-      return Object.assign(document.createElement(tag), props);
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
